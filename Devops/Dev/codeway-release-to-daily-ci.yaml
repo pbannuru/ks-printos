@@ -1,0 +1,48 @@
+resources:
+  repositories:
+    - repository: templates
+      type: githubenterprise
+      name: codeway/templates
+      endpoint: ghe
+
+trigger:
+  branches:
+    include:
+      - release_to_daily
+  paths:
+    exclude:
+      - Devops/Dev/charts
+      - Devops/Dev/codeway-release-to-daily-ci.yaml
+      - Devops/Dev/codeway-release-to-daily-cd.yaml
+
+variables:
+  - group: nextjs-knowledgesearch
+  - name: branch
+    value: release_to_daily
+
+stages:
+  - template: templates/codeway-docker-image-v1-beta2.yaml@templates
+    parameters:
+      anchoreScan: false
+      trivyScan: true
+      trivyFailOnIssuesFound: false
+      project: knowledge_search
+      dockerfile: Dockerfile
+      repo: ks_printos_${{ variables.branch }}
+      registryType: harbor
+      releaseBranch: ${{ variables.branch }}
+      registryParameters:
+        - registry: harbor-knowledge_search
+
+  - template: templates/codeway-helm-library-v0.yaml@templates
+    parameters:
+      releaseBranch: ${{ variables.branch }}
+      chartName: ks-printos-release-to-daily
+      chartDir: $(Build.SourcesDirectory)/Devops/Dev/charts/ks-printos
+      versionMajorMinor: '5.6'
+      publishRepositories:
+        - name: ks-printos-release-to-daily
+          url: https://harbor.ext.hp.com/chartrepo/knowledge_search
+          username: $(harbor_username)
+          password: $(harbor_password)
+          type: harbor
